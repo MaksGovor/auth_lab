@@ -1,18 +1,22 @@
+'use strict';
+
 const uuid = require('uuid');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const onFinished = require('on-finished');
 const bodyParser = require('body-parser');
 const path = require('path');
-const port = 3000;
 const fs = require('fs');
+const { port, sessionKey } = require('./config');
+const AttemptManager = require('./attempt-manager');
 
+const attempsManager = new AttemptManager();
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const SESSION_KEY = 'session';
+const SESSION_KEY = sessionKey;
 
 class Session {
     #sessions = {}
@@ -120,22 +124,20 @@ const users = [
 ]
 
 app.post('/api/login', (req, res) => {
+    if (!attempsManager.canLogin(login)) res.status(401).json({ waitTime: attempsManager.waitTime });
     const { login, password } = req.body;
 
-    const user = users.find((user) => {
-        if (user.login == login && user.password == password) {
-            return true;
-        }
-        return false
-    });
+    const user = users.find((user) => user.login == login && user.password == password);
 
     if (user) {
+        attempsManager.sucseccLogin(login);
         req.session.username = user.username;
         req.session.login = user.login;
 
         res.json({ username: login });
     }
 
+    attempsManager.addAttempt(login);
     res.status(401).send();
 });
 

@@ -13,11 +13,12 @@
             <h1 id="login-header">Login</h1>
 
             <div id="login-error-msg-holder">
-            <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-error-msg" class="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-server-msg" class="login-error-msg"></p>
             </div>
 
             <form id="login-form" action="/api/login" method="post">
-                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
+                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Login">
                 <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
@@ -60,7 +61,7 @@
             align-items: center;
         }
 
-        #login-error-msg {
+        .login-error-msg {
             width: 23%;
             text-align: center;
             margin: 0;
@@ -114,6 +115,7 @@
         const loginForm = document.getElementById("login-form");
         const loginButton = document.getElementById("login-form-submit");
         const loginErrorMsg = document.getElementById("login-error-msg");
+        const loginSeverMsg = document.getElementById("login-server-msg")
 
         loginButton.addEventListener("click", (e) => {
             e.preventDefault();
@@ -132,8 +134,16 @@
                 const { username } =  response.data;
                 alert(`You have successfully logged in, ${username}`);
                 location.reload();
-            }).catch((response) => {
-                console.log(response);
+            }).catch((err) => {
+                console.log(err);
+                if (err.response.data) { 
+                    const waitSec = err.response.data.waitTime / 1000;
+                    loginSeverMsg.innerText = `Try after ${waitSec} seconds`;
+                    loginSeverMsg.style.opacity = 1;
+                } else {
+                    loginSeverMsg.innerText = '';
+                    loginSeverMsg.style.opacity = 0;
+                }
                 loginErrorMsg.style.opacity = 1;
             });
         })
