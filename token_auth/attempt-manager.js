@@ -23,7 +23,7 @@ class AttemptManager {
         }, this.#waitTimeoutMsec);
         return;
       }
-    this.#currentCount[login]++;
+      this.#currentCount[login]++;
     }
   }
 
