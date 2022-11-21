@@ -10,6 +10,8 @@
 
     <body>
         <main id="main-holder">
+            <a href="/logout" id="logout">Logout</a>
+
             <h1 id="login-header">Login</h1>
 
             <div id="login-error-msg-holder">
@@ -40,6 +42,10 @@
             justify-items: center;
             align-items: center;
             background-color: #3a3a3a;
+        }
+
+        #logout {
+            opacity: 0;
         }
 
         #main-holder {
@@ -109,17 +115,70 @@
             cursor: pointer;
             outline: none;
         }
-        
+
         #login-form-submit:disabled {
             background-color: #900000;
         }
     </style>
 
     <script>
+        const session = sessionStorage.getItem('session');
+
+        let token;
+
+        try {
+            token = JSON.parse(session).token;
+        } catch(e) {}
+
+        axios('/insystem', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        }).catch(async (err) => {
+            if (err.response.status === 401) {
+                try {
+                    const response = await axios({method: 'get', url: '/api/refresh'}, { withCredentials: true });
+                    sessionStorage.setItem('session', JSON.stringify(response.data));
+                    location.reload();
+                } catch {}
+            }
+        });
+
+        if (token) {
+            axios.get('/', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                }
+            }).then((response) => {
+                const { username } = response.data;
+
+                if (username) {
+                    const mainHolder = document.getElementById("main-holder");
+                    const loginHeader = document.getElementById("login-header");
+
+                    loginForm.remove();
+                    loginErrorMsg.remove();
+                    loginHeader.remove();
+
+                    mainHolder.append(`Hello ${username}`);
+                    logoutLink.style.opacity = 1;
+                }
+            })
+        }
+
+
         const loginForm = document.getElementById("login-form");
         const loginButton = document.getElementById("login-form-submit");
         const loginErrorMsg = document.getElementById("login-error-msg");
         const loginSeverMsg = document.getElementById("login-server-msg")
+        const logoutLink =  document.getElementById("logout");
+
+        logoutLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            axios({ method: 'get', url: '/logout' }, { withCredentials: true });
+            sessionStorage.removeItem('session');
+            location.reload();
+        });
 
         loginButton.addEventListener("click", (e) => {
             e.preventDefault();
@@ -133,10 +192,12 @@
                 data: {
                     login,
                     password
-                }
-            }).then((response) => {
-                const { username } =  response.data;
-                alert(`You have successfully logged in, ${username}`);
+                },
+            },
+            { withCredentials: true }).then((response) => {
+                const { username } = response.data;
+                const tokenData = JSON.stringify(response.data);
+                sessionStorage.setItem('session', tokenData);
                 location.reload();
             }).catch((err) => {
                 console.log(err)

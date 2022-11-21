@@ -15,11 +15,12 @@
             <h1 id="login-header">Login</h1>
 
             <div id="login-error-msg-holder">
-                <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-error-msg" class="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-server-msg" class="login-error-msg"></p>
             </div>
 
             <form id="login-form" action="/api/login" method="post">
-                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
+                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Login">
                 <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
@@ -66,7 +67,7 @@
             align-items: center;
         }
 
-        #login-error-msg {
+        .login-error-msg {
             width: 23%;
             text-align: center;
             margin: 0;
@@ -114,6 +115,10 @@
             cursor: pointer;
             outline: none;
         }
+
+        #login-form-submit:disabled {
+            background-color: #900000;
+        }
     </style>
 
     <script>
@@ -151,6 +156,7 @@
         const loginForm = document.getElementById("login-form");
         const loginButton = document.getElementById("login-form-submit");
         const loginErrorMsg = document.getElementById("login-error-msg");
+        const loginSeverMsg = document.getElementById("login-server-msg")
         const logoutLink =  document.getElementById("logout");
 
         logoutLink.addEventListener("click", (e) => {
@@ -176,7 +182,20 @@
                 const { username } =  response.data;
                 sessionStorage.setItem('session', JSON.stringify(response.data));
                 location.reload();
-            }).catch((response) => {
+            }).catch((err) => {
+                console.log(err)
+                if (err.response.data) {
+                    const { waitTime } = err.response.data;
+                    const waitSec =  waitTime / 1000;
+                    loginSeverMsg.innerText = `Try after ${waitSec} seconds`;
+                    loginSeverMsg.style.opacity = 1;
+                    loginButton.disabled = true;
+                    setTimeout(() => {
+                        loginButton.disabled = false;
+                        loginSeverMsg.innerText = '';
+                        loginSeverMsg.style.opacity = 0;
+                    }, waitTime)
+                }
                 loginErrorMsg.style.opacity = 1;
             });
         })
