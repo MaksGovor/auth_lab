@@ -11,6 +11,7 @@ const tokenManager = require('./token-manager');
 const AttemptManager = require('./attempt-manager');
 const DataBase = require('./db/Database');
 const { generateUserDto } = require('./users-dto');
+const logger = require('./logger');
 
 const attempsManager = new AttemptManager();
 const app = express();
@@ -27,10 +28,13 @@ app.use((req, res, next) => {
     const authorizationHeader = req.get(SESSION_KEY);
     const accessToken = authorizationHeader.split(' ')[1];
     const payload = tokenManager.getPayloadAccessToken(accessToken);
-    if (payload) req.user = generateUserDto(payload);
-  } catch (error) {
-    console.log('Unauthorized');
-  }
+    if (payload) {
+      req.user = generateUserDto(payload);
+      logger.info(`${req.user.username} get by Access Token`);
+    } else {
+      logger.error('Unathorized');
+    }
+  } catch {}
 
   next();
 });
@@ -55,6 +59,8 @@ app.get('/', (req, res) => {
 app.get('/logout', (req, res) => {
   const { refreshToken } = req.cookies;
 
+  const { username } = tokenManager.getPayloadRefreshToken(refreshToken);
+  logger.info(`${username} logout`);
   tokenManager.deleteToken(refreshToken);
   res.clearCookie('refreshToken');
   res.redirect('/');
@@ -69,6 +75,7 @@ app.get('/api/refresh', (req, res) => {
     const tokens = tokenManager.generatePairOfTokens(userDto);
     tokenManager.storeToken(userDto.login, tokens.resreshToken);
 
+    logger.info(`Refresh token for ${userDto.username}`);
     res.cookie('refreshToken', tokens.resreshToken, { httpOnly: true });
     res.json({ token: tokens.accessToken });
   }
@@ -93,6 +100,7 @@ app.post('/api/login', (req, res) => {
     const tokens = tokenManager.generatePairOfTokens(userDto);
     tokenManager.storeToken(login, tokens.resreshToken);
 
+    logger.info(`${userDto.username} successfully login`);
     res.cookie('refreshToken', tokens.resreshToken, { httpOnly: true });
     res.json({ token: tokens.accessToken });
   }
