@@ -11,7 +11,6 @@ class DataBase {
     try {
       return JSON.parse(fs.readFileSync(path));
     } catch (error) {
-      console.log(error);
       return null;
     }
   }
