@@ -128,9 +128,9 @@ const users = [
 ];
 
 app.post('/api/login', (req, res) => {
+  const { login, password } = req.body;
   if (!attempsManager.canLogin(login))
     res.status(401).json({ waitTime: attempsManager.waitTime });
-  const { login, password } = req.body;
 
   const user = users.find(
     (user) => user.login === login && user.password === password
