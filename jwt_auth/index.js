@@ -59,8 +59,8 @@ app.get('/', (req, res) => {
 app.get('/logout', (req, res) => {
   const { refreshToken } = req.cookies;
 
-  const { username } = tokenManager.getPayloadRefreshToken(refreshToken);
-  logger.info(`${username} logout`);
+  const payload = tokenManager.getPayloadRefreshToken(refreshToken);
+  logger.info(`${payload ? payload.username : 'user'} logout`);
   tokenManager.deleteToken(refreshToken);
   res.clearCookie('refreshToken');
   res.redirect('/');
