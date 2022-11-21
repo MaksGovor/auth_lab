@@ -115,6 +115,10 @@
             cursor: pointer;
             outline: none;
         }
+
+        #login-form-submit:disabled {
+            background-color: #900000;
+        }
     </style>
 
     <script>
@@ -126,10 +130,24 @@
             token = JSON.parse(session).token;
         } catch(e) {}
 
+        axios('/insystem', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        }).catch(async (err) => {
+            if (err.response.status === 401) {
+                try {
+                    const response = await axios({method: 'get', url: '/api/refresh'}, { withCredentials: true });
+                    sessionStorage.setItem('session', JSON.stringify(response.data));
+                    location.reload();
+                } catch {}
+            }
+        });
+
         if (token) {
             axios.get('/', {
                 headers: {
-                    Authorization: token
+                    Authorization: `Bearer ${token}`,
                 }
             }).then((response) => {
                 const { username } = response.data;
@@ -145,7 +163,7 @@
                     mainHolder.append(`Hello ${username}`);
                     logoutLink.style.opacity = 1;
                 }
-            });
+            })
         }
 
 
@@ -157,6 +175,7 @@
 
         logoutLink.addEventListener("click", (e) => {
             e.preventDefault();
+            axios({ method: 'get', url: '/logout' }, { withCredentials: true });
             sessionStorage.removeItem('session');
             location.reload();
         });
@@ -173,20 +192,26 @@
                 data: {
                     login,
                     password
-                }
-            }).then((response) => {
-                const { username } =  response.data;
-                sessionStorage.setItem('session', JSON.stringify(response.data));
+                },
+            },
+            { withCredentials: true }).then((response) => {
+                const { username } = response.data;
+                const tokenData = JSON.stringify(response.data);
+                sessionStorage.setItem('session', tokenData);
                 location.reload();
             }).catch((err) => {
                 console.log(err)
                 if (err.response.data) {
-                    const waitSec = err.response.data.waitTime / 1000;
+                    const { waitTime } = err.response.data;
+                    const waitSec =  waitTime / 1000;
                     loginSeverMsg.innerText = `Try after ${waitSec} seconds`;
                     loginSeverMsg.style.opacity = 1;
-                } else {
-                    loginSeverMsg.innerText = '';
-                    loginSeverMsg.style.opacity = 0;
+                    loginButton.disabled = true;
+                    setTimeout(() => {
+                        loginButton.disabled = false;
+                        loginSeverMsg.innerText = '';
+                        loginSeverMsg.style.opacity = 0;
+                    }, waitTime)
                 }
                 loginErrorMsg.style.opacity = 1;
             });
