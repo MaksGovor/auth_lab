@@ -109,6 +109,10 @@
             cursor: pointer;
             outline: none;
         }
+        
+        #login-form-submit:disabled {
+            background-color: #900000;
+        }
     </style>
 
     <script>
@@ -135,14 +139,18 @@
                 alert(`You have successfully logged in, ${username}`);
                 location.reload();
             }).catch((err) => {
-                console.log(err);
-                if (err.response.data) { 
-                    const waitSec = err.response.data.waitTime / 1000;
+                console.log(err)
+                if (err.response.data) {
+                    const { waitTime } = err.response.data;
+                    const waitSec =  waitTime / 1000;
                     loginSeverMsg.innerText = `Try after ${waitSec} seconds`;
                     loginSeverMsg.style.opacity = 1;
-                } else {
-                    loginSeverMsg.innerText = '';
-                    loginSeverMsg.style.opacity = 0;
+                    loginButton.disabled = true;
+                    setTimeout(() => {
+                        loginButton.disabled = false;
+                        loginSeverMsg.innerText = '';
+                        loginSeverMsg.style.opacity = 0;
+                    }, waitTime)
                 }
                 loginErrorMsg.style.opacity = 1;
             });
