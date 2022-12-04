@@ -1,11 +1,12 @@
 'use strict';
 
-const config = require('./config');
 const httpConstants = require('http-constants');
 const uuid = require('uuid');
 const requestCallback = require('request');
 const { promisify } = require('util');
 
+const config = require('./config');
+const { readTokenInfo, storeTokenInfo } = require('./token-local');
 const request = promisify(requestCallback);
 
 const tokenOptions = {
@@ -49,16 +50,21 @@ const createOptions = {
 
 (async () => {
   try {
-    const tokenResponce = await request(tokenOptions);
-    if (tokenResponce.statusCode != httpConstants.codes.OK) {
-      const { statusCode, statusMessage } = tokenResponce;
-      console.dir({ statusCode, statusMessage });
-      return;
+    let tokenInfo = await readTokenInfo();
+
+    if (!tokenInfo) {
+      const tokenResponce = await request(tokenOptions);
+      if (tokenResponce.statusCode != httpConstants.codes.OK) {
+        const { statusCode, statusMessage } = tokenResponce;
+        console.dir({ statusCode, statusMessage });
+        return;
+      }
+
+      tokenInfo = JSON.parse(tokenResponce.body);
+      await storeTokenInfo(tokenInfo);
     }
 
-    const { access_token: accessToken, token_type: tokenType } = JSON.parse(
-      tokenResponce.body
-    );
+    const { access_token: accessToken, token_type: tokenType } = tokenInfo;
     const authorizationHeader = `${tokenType} ${accessToken}`;
     createOptions.headers.Authorization = authorizationHeader;
     console.dir({ authorizationHeader });
