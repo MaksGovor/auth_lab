@@ -1,8 +1,14 @@
 'use strict';
 
+const httpConstants = require('http-constants');
 const fsp = require('fs/promises');
+const requestCallback = require('request');
+const { promisify } = require('util');
+
 const config = require('./config');
+const options = require('./request-options');
 const hourInSec = 60 * 60;
+const request = promisify(requestCallback);
 
 const readTokenInfo = async () => {
   try {
@@ -31,7 +37,26 @@ const storeTokenInfo = async (tokenInfo) => {
   }
 };
 
+const getAccessToken = async (tokenOptions = options.tokenOptions) => {
+  let tokenInfo = await readTokenInfo();
+
+  if (!tokenInfo) {
+    const tokenResponce = await request(tokenOptions);
+    if (tokenResponce.statusCode != httpConstants.codes.OK) {
+      const { statusCode, statusMessage } = tokenResponce;
+      console.dir({ statusCode, statusMessage });
+      return;
+    }
+
+    tokenInfo = JSON.parse(tokenResponce.body);
+    await storeTokenInfo(tokenInfo);
+  }
+
+  return tokenInfo;
+};
+
 module.exports = {
   readTokenInfo,
   storeTokenInfo,
+  getAccessToken,
 };
