@@ -10,6 +10,7 @@ const options = require('./request-options');
 (async () => {
   try {
     const userTokenOptions = options.getUserTokenOptions();
+    console.log({ userTokenOptions });
 
     const accessTokenUserResponce = await request(userTokenOptions);
     if (accessTokenUserResponce.statusCode != httpConstants.codes.OK) {

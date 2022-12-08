@@ -52,7 +52,7 @@ const options = require('./request-options');
 
     console.log('Password changed');
 
-    console.log('Try get acces token with new password:');
+    console.log('Try get access token with new password:');
 
     const userTokenOptions = options.getUserTokenOptions(
       options.userEmailPasswordChange,
