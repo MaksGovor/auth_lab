@@ -47,7 +47,7 @@ const getUserCreateOptions = (authorization, user = defaultUser) => ({
 
 // Lab 3
 
-const getUserTokenOptions = () => ({
+const getUserTokenOptions = (username, password) => ({
   method: httpConstants.methods.POST,
   url: `https://${config.domain}/oauth/token`,
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -57,8 +57,8 @@ const getUserTokenOptions = () => ({
     client_id: config.clientId,
     client_secret: config.clientSecret,
     scope: 'offline_access',
-    username: defaultUser.email,
-    password: defaultUser.password,
+    username: username || defaultUser.email,
+    password: password || defaultUser.password,
   },
 });
 
@@ -74,9 +74,38 @@ const getRefreshUserTokenOptions = (refreshToken) => ({
   },
 });
 
+const userEmailPasswordChange = 'maks.govruha@gmail.com';
+const newPassword = 'hello=world_newPassWORD';
+
+const getChangePasswordOptions = (authorization, userId, password) => ({
+  method: httpConstants.methods.PATCH,
+  url: `https://${config.domain}/api/v2/users/${userId}`,
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: authorization,
+  },
+  body: JSON.stringify({
+    password: password || newPassword,
+    connection: 'Username-Password-Authentication',
+  }),
+});
+
+const getUserListOptions = (authorization) => ({
+  method: httpConstants.methods.GET,
+  url: `https://${config.domain}/api/v2/users`,
+  headers: {
+    Authorization: authorization,
+  },
+});
+
 module.exports = {
+  userEmailPasswordChange,
+  newPassword,
+
   getTokenOptions,
   getUserCreateOptions,
   getUserTokenOptions,
   getRefreshUserTokenOptions,
+  getChangePasswordOptions,
+  getUserListOptions,
 };
