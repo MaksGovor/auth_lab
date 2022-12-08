@@ -37,14 +37,14 @@ const storeTokenInfo = async (tokenInfo) => {
   }
 };
 
-const getAccessToken = async (tokenOptions = options.tokenOptions) => {
+const getAccessToken = async (tokenOptions) => {
   let tokenInfo = await readTokenInfo();
 
   if (!tokenInfo) {
     const tokenResponce = await request(tokenOptions);
     if (tokenResponce.statusCode != httpConstants.codes.OK) {
-      const { statusCode, statusMessage } = tokenResponce;
-      console.dir({ statusCode, statusMessage });
+      const { statusCode, statusMessage, body } = tokenResponce;
+      console.dir({ statusCode, statusMessage, body });
       return;
     }
 

@@ -6,7 +6,7 @@ const config = require('./config');
 
 // Lab 2
 
-const tokenOptions = {
+const getTokenOptions = () => ({
   method: httpConstants.methods.POST,
   url: `https://${config.domain}/oauth/token`,
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -16,9 +16,9 @@ const tokenOptions = {
     audience: config.audience,
     grant_type: 'client_credentials',
   },
-};
+});
 
-const user = {
+const defaultUser = {
   email: 'maksgovruha@gmail.com',
   user_metadata: {},
   blocked: false,
@@ -35,17 +35,48 @@ const user = {
   verify_email: false,
 };
 
-const createOptions = {
-  method: 'POST',
+const getUserCreateOptions = (authorization, user = defaultUser) => ({
+  method: httpConstants.methods.POST,
   url: `https://${config.domain}/api/v2/users`,
   headers: {
     'Content-Type': 'application/json',
-    Authorization: '',
+    Authorization: authorization,
   },
   body: JSON.stringify(user),
-};
+});
+
+// Lab 3
+
+const getUserTokenOptions = () => ({
+  method: httpConstants.methods.POST,
+  url: `https://${config.domain}/oauth/token`,
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  form: {
+    grant_type: 'password',
+    audience: config.audience,
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    scope: 'offline_access',
+    username: defaultUser.email,
+    password: defaultUser.password,
+  },
+});
+
+const getRefreshUserTokenOptions = (refreshToken) => ({
+  method: httpConstants.methods.POST,
+  url: `https://${config.domain}/oauth/token`,
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  form: {
+    grant_type: 'refresh_token',
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    refresh_token: refreshToken,
+  },
+});
 
 module.exports = {
-  tokenOptions,
-  createOptions,
+  getTokenOptions,
+  getUserCreateOptions,
+  getUserTokenOptions,
+  getRefreshUserTokenOptions,
 };

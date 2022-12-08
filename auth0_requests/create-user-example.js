@@ -10,18 +10,18 @@ const request = promisify(requestCallback);
 
 (async () => {
   try {
-    const tokenInfo = await getAccessToken(options.tokenOptions);
+    const tokenOptions = options.getTokenOptions();
+    const tokenInfo = await getAccessToken(tokenOptions);
 
     const { access_token: accessToken, token_type: tokenType } = tokenInfo;
     const authorizationHeader = `${tokenType} ${accessToken}`;
-    const createUserOptions = JSON.parse(JSON.stringify(options.createOptions));
-    createUserOptions.headers.Authorization = authorizationHeader;
+    const createUserOptions = options.getUserCreateOptions(authorizationHeader);
     console.dir({ authorizationHeader });
 
     const newUserResponce = await request(createUserOptions);
     if (newUserResponce.statusCode != httpConstants.codes.CREATED) {
-      const { statusCode, statusMessage } = newUserResponce;
-      console.dir({ statusCode, statusMessage });
+      const { statusCode, statusMessage, body } = newUserResponce;
+      console.dir({ statusCode, statusMessage, body });
       return;
     }
 
