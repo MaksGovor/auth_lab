@@ -5,9 +5,12 @@ const fsp = require('fs/promises');
 const requestCallback = require('request');
 const { promisify } = require('util');
 
-const config = require('./config');
+const config = require('../config');
+const options = require('./request-options');
+
 const hourInSec = 60 * 60;
 const request = promisify(requestCallback);
+const defaultTokenOptions = options.getAppTokenOptions();
 
 const readTokenInfo = async () => {
   try {
@@ -36,7 +39,7 @@ const storeTokenInfo = async (tokenInfo) => {
   }
 };
 
-const getAccessToken = async (tokenOptions) => {
+const getAppAccessToken = async (tokenOptions = defaultTokenOptions) => {
   let tokenInfo = await readTokenInfo();
 
   if (!tokenInfo) {
@@ -57,5 +60,5 @@ const getAccessToken = async (tokenOptions) => {
 module.exports = {
   readTokenInfo,
   storeTokenInfo,
-  getAccessToken,
+  getAppAccessToken,
 };

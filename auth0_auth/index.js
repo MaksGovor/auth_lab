@@ -6,7 +6,9 @@ const onFinished = require('on-finished');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+
 const { port, sessionKey } = require('./config');
+const appToken = require('./token-utils/app-token');
 const AttemptManager = require('./attempt-manager');
 
 const attempsManager = new AttemptManager();
@@ -141,6 +143,10 @@ app.post('/api/login', (req, res) => {
   res.status(401).send();
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`);
+
+  const appAccessToken = await appToken.getAppAccessToken();
+
+  console.log({ appAccessToken });
 });

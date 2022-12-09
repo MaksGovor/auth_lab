@@ -2,11 +2,9 @@
 
 const httpConstants = require('http-constants');
 const uuid = require('uuid');
-const config = require('./config');
+const config = require('../config');
 
-// Lab 2
-
-const getTokenOptions = () => ({
+const getAppTokenOptions = () => ({
   method: httpConstants.methods.POST,
   url: `https://${config.domain}/oauth/token`,
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -44,8 +42,6 @@ const getUserCreateOptions = (authorization, user = defaultUser) => ({
   },
   body: JSON.stringify(user),
 });
-
-// Lab 3
 
 const getUserTokenOptions = (username, password) => ({
   method: httpConstants.methods.POST,
@@ -102,7 +98,7 @@ module.exports = {
   userEmailPasswordChange,
   newPassword,
 
-  getTokenOptions,
+  getAppTokenOptions,
   getUserCreateOptions,
   getUserTokenOptions,
   getRefreshUserTokenOptions,
