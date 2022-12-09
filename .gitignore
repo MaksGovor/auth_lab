@@ -105,4 +105,4 @@ dist
 .tern-port
 
 # App
-auth0_requests/token-info.json
+token-info.json
