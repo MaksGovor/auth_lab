@@ -27,7 +27,7 @@ class AttemptManager {
     }
   }
 
-  sucseccLogin(login) {
+  successLogin(login) {
     this.#canLogin[login] = true;
     this.#currentCount[login] = 0;
   }

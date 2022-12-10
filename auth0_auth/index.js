@@ -6,13 +6,19 @@ const onFinished = require('on-finished');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const httpConstants = require('http-constants');
 
 const { port, sessionKey } = require('./config');
 const appToken = require('./token-utils/app-token');
+const userToken = require('./token-utils/user-token');
 const AttemptManager = require('./attempt-manager');
+const DataBase = require('./db/Database');
+const ApiError = require('./error/apiError');
 
 const attempsManager = new AttemptManager();
+const tokensStorage = new DataBase(path.join(__dirname + '/db/tokens.json'));
 const app = express();
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -109,39 +115,34 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-const users = [
-  {
-    login: 'Login',
-    password: 'Password',
-    username: 'Username',
-  },
-  {
-    login: 'MaksGovor',
-    password: 'ip-93',
-    username: 'Maks Govoruha',
-  },
-];
-
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { login, password } = req.body;
   if (!attempsManager.canLogin(login))
     res.status(401).json({ waitTime: attempsManager.waitTime });
 
-  const user = users.find(
-    (user) => user.login === login && user.password === password
-  );
+  try {
+    const { accessToken, refreshToken } = await userToken.getUserAccessToken(
+      login,
+      password
+    );
 
-  if (user) {
-    attempsManager.sucseccLogin(login);
-    req.session.username = user.username;
-    req.session.login = user.login;
+    tokensStorage.upsert(login, { refreshToken });
+    await tokensStorage.store();
 
-    res.json({ token: req.sessionId });
+    console.log(`${login} successfully login`);
+    res.json({ token: accessToken });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      attempsManager.addAttempt(login);
+      return res.status(err.statusCode).send(err.message);
+    }
+
+    console.error(err);
+    res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
   }
-
-  attempsManager.addAttempt(login);
-  res.status(401).send();
 });
+
+app.post('/api/register', (req, res) => {});
 
 app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`);

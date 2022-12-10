@@ -106,3 +106,4 @@ dist
 
 # App
 token-info.json
+auth0_auth/db/tokens.json
