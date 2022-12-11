@@ -24,7 +24,26 @@ const getUserAccessToken = async (username, password) => {
 
   return {
     accessToken: responce.access_token,
+    expiresIn: responce.expires_in,
     refreshToken: responce.refresh_token,
+  };
+};
+
+const refreshUserToken = async (refreshToken) => {
+  const refreshTokenOptions = options.getRefreshUserTokenOptions(refreshToken);
+
+  const refreshTokenResponce = await request(refreshTokenOptions);
+  if (refreshTokenResponce.statusCode != httpConstants.codes.OK) {
+    const { statusCode, statusMessage, body } = refreshTokenResponce;
+    throw new ApiError(
+      `Auth0 user-token: ${statusCode} ${statusMessage} ${body}`
+    );
+  }
+
+  const responce = JSON.parse(accessTokenUserResponce.body);
+  return {
+    accessToken: responce.access_token,
+    expiresIn: responce.expires_in,
   };
 };
 
@@ -39,4 +58,5 @@ const getPayloadFromToken = (token) => {
 module.exports = {
   getUserAccessToken,
   getPayloadFromToken,
+  refreshUserToken,
 };

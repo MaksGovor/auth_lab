@@ -58,6 +58,7 @@ app.get('/logout', async (req, res) => {
   }
 
   await tokensStorage.deleteByKey(userId);
+  res.clearCookie('refreshToken');
   res.redirect('/');
 });
 
@@ -69,16 +70,18 @@ app.post('/api/login', async (req, res) => {
       .json({ waitTime: attempsManager.waitTime });
 
   try {
-    const { accessToken, refreshToken } = await userToken.getUserAccessToken(
-      login,
-      password
-    );
+    const { accessToken, expiresIn, refreshToken } =
+      await userToken.getUserAccessToken(login, password);
 
     const { sub: userId } = userToken.getPayloadFromToken(accessToken);
     tokensStorage.upsert(userId, { refreshToken });
 
     console.log(`${login} successfully login`);
-    res.json({ token: accessToken });
+    res.cookie('refreshToken', refreshToken, { httpOnly: true });
+    res.json({
+      token: accessToken,
+      expiresDate: Date.now() + expiresIn * 1000,
+    });
   } catch (err) {
     if (err instanceof ApiError) {
       attempsManager.addAttempt(login);
@@ -90,8 +93,28 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/register', (req, res) => {
-  res.send('aa');
+app.post('/api/refresh', async (req, res) => {
+  const userId = req.userId;
+  const { refreshToken } = req.cookies;
+
+  if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
+
+  const refreshTokenDb = tokensStorage.getData(userId);
+  if (refreshToken === refreshTokenDb) {
+    const { accessToken, expiresIn } = await userToken.refreshUserToken(
+      refreshToken
+    );
+    logger.info(`Refresh token for ${req.userId}`);
+    res.json({
+      token: accessToken,
+      expiresDate: Date.now() + expiresIn * 1000,
+    });
+  }
+
+  res.status(httpConstants.codes.UNAUTHORIZED).send();
+});
+
+app.post('/api/register', async (req, res) => {
 });
 
 app.listen(port, async () => {
