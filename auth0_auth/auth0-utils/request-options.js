@@ -70,38 +70,18 @@ const getRefreshUserTokenOptions = (refreshToken) => ({
   },
 });
 
-const userEmailPasswordChange = 'maks.govruha@gmail.com';
-const newPassword = 'hello=world_newPassWORD';
-
-const getChangePasswordOptions = (authorization, userId, password) => ({
-  method: httpConstants.methods.PATCH,
-  url: `https://${config.domain}/api/v2/users/${userId}`,
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: authorization,
-  },
-  body: JSON.stringify({
-    password: password || newPassword,
-    connection: 'Username-Password-Authentication',
-  }),
-});
-
-const getUserListOptions = (authorization) => ({
+const getUserGetOptions = (authorization, userId) => ({
   method: httpConstants.methods.GET,
-  url: `https://${config.domain}/api/v2/users`,
+  url: `https://${config.domain}/api/v2/users/${userId}`,
   headers: {
     Authorization: authorization,
   },
 });
 
 module.exports = {
-  userEmailPasswordChange,
-  newPassword,
-
   getAppTokenOptions,
   getUserCreateOptions,
   getUserTokenOptions,
   getRefreshUserTokenOptions,
-  getChangePasswordOptions,
-  getUserListOptions,
+  getUserGetOptions,
 };

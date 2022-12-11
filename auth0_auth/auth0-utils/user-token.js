@@ -3,6 +3,7 @@
 const httpConstants = require('http-constants');
 const requestCallback = require('request');
 const { promisify } = require('util');
+const jwt = require('jsonwebtoken');
 
 const options = require('./request-options');
 const ApiError = require('../error/apiError');
@@ -27,6 +28,15 @@ const getUserAccessToken = async (username, password) => {
   };
 };
 
+const getPayloadFromToken = (token) => {
+  try {
+    return jwt.decode(token);
+  } catch (error) {
+    return null;
+  }
+};
+
 module.exports = {
   getUserAccessToken,
+  getPayloadFromToken,
 };

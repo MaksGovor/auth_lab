@@ -19,6 +19,17 @@
                 <p id="login-server-msg" class="login-error-msg"></p>
             </div>
 
+            <div id="loader" class="loader">
+                <div class="bar bar1"></div>
+                <div class="bar bar2"></div>
+                <div class="bar bar3"></div>
+                <div class="bar bar4"></div>
+                <div class="bar bar5"></div>
+                <div class="bar bar6"></div>
+                <div class="bar bar7"></div>
+                <div class="bar bar8"></div>      
+          </div>
+
             <form id="login-form" action="/api/login" method="post">
                 <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Login">
                 <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
@@ -119,10 +130,60 @@
         #login-form-submit:disabled {
             background-color: #900000;
         }
+
+        .loader{
+            opacity: 0;
+        }
+        .bar{
+            width: 10px;
+            height: 70px;
+            background: hsl(0, 0%, 0%);
+            display: inline-block;
+            transform-origin: bottom center;
+            border-top-right-radius: 20px;
+            border-top-left-radius: 20px;
+            animation: loader 1.2s linear infinite;
+        }
+
+        .bar1{ animation-delay: 0.1s; }
+        .bar2{ animation-delay: 0.2s; }
+        .bar3{ animation-delay: 0.3s; }
+        .bar4{ animation-delay: 0.4s; }
+        .bar5{ animation-delay: 0.5s; }
+        .bar6{ animation-delay: 0.6s; }
+        .bar7{ animation-delay: 0.7s; }
+        .bar8{ animation-delay: 0.8s; }
+
+        @keyframes loader {
+            0%{ 
+                transform: scaleY(0.1);
+            }
+        
+            50%{ 
+                transform: scaleY(1);
+            background: rgb(255, 0, 0);
+        }
+
+            100%{
+                transform: scaleY(0.1);
+                background: transparent;
+            }
+        }
     </style>
 
     <script>
         const session = sessionStorage.getItem('session');
+        const loginForm = document.getElementById("login-form");
+        const loginButton = document.getElementById("login-form-submit");
+        const loginErrorMsg = document.getElementById("login-error-msg");
+        const loginSeverMsg = document.getElementById("login-server-msg")
+        const logoutLink =  document.getElementById("logout");
+        const loader =  document.getElementById("loader");
+
+        const toggleLoading = (isLoading) => {
+            loginForm.style.display = isLoading ? 'none' : '';
+            loader.style.opacity = isLoading ? 1 : 0;
+        };
 
         let token;
 
@@ -131,11 +192,13 @@
         } catch(e) {}
 
         if (token) {
+            toggleLoading(true);
             axios.get('/', {
                 headers: {
-                    Authorization: token
+                    Authorization: `Bearer ${token}`,
                 }
             }).then((response) => {
+                toggleLoading(false);
                 const { username } = response.data;
 
                 if (username) {
@@ -152,13 +215,6 @@
             });
         }
 
-
-        const loginForm = document.getElementById("login-form");
-        const loginButton = document.getElementById("login-form-submit");
-        const loginErrorMsg = document.getElementById("login-error-msg");
-        const loginSeverMsg = document.getElementById("login-server-msg")
-        const logoutLink =  document.getElementById("logout");
-
         logoutLink.addEventListener("click", (e) => {
             e.preventDefault();
             sessionStorage.removeItem('session');
@@ -170,7 +226,7 @@
             const login = loginForm.login.value;
             const password = loginForm.password.value;
 
-
+            toggleLoading(true);
             axios({
                 method: 'post',
                 url: '/api/login',
@@ -179,10 +235,12 @@
                     password
                 }
             }).then((response) => {
+                toggleLoading(false);
                 const { username } =  response.data;
                 sessionStorage.setItem('session', JSON.stringify(response.data));
                 location.reload();
             }).catch((err) => {
+                toggleLoading(false);
                 console.log(err)
                 if (err.response.data) {
                     const { waitTime } = err.response.data;

@@ -14,8 +14,9 @@ class DataBase {
     }
   }
 
-  upsert(key, data) {
+  async upsert(key, data) {
     this.#data[key] = data || {};
+    await this.store();
   }
 
   getData(key) {
@@ -38,6 +39,11 @@ class DataBase {
         return key;
       }
     }
+  }
+
+  async deleteByKey(key) {
+    if (key) delete this.#data[key];
+    await this.store();
   }
 
   async store() {

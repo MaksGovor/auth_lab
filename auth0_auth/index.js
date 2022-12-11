@@ -1,16 +1,14 @@
 'use strict';
 
-const uuid = require('uuid');
 const express = require('express');
-const onFinished = require('on-finished');
 const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs');
 const httpConstants = require('http-constants');
 
 const { port, sessionKey } = require('./config');
-const appToken = require('./token-utils/app-token');
-const userToken = require('./token-utils/user-token');
+const appToken = require('./auth0-utils/app-token');
+const userToken = require('./auth0-utils/user-token');
+const userModel = require('./auth0-utils/user-crud');
 const AttemptManager = require('./attempt-manager');
 const DataBase = require('./db/Database');
 const ApiError = require('./error/apiError');
@@ -24,101 +22,51 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const SESSION_KEY = sessionKey;
 
-class Session {
-  #sessions = {};
-
-  constructor() {
-    try {
-      this.#sessions = fs.readFileSync('./sessions.json', 'utf8');
-      this.#sessions = JSON.parse(this.#sessions.trim());
-
-      console.log(this.#sessions);
-    } catch (e) {
-      this.#sessions = {};
-    }
-  }
-
-  #storeSessions() {
-    fs.writeFileSync(
-      './sessions.json',
-      JSON.stringify(this.#sessions),
-      'utf-8'
-    );
-  }
-
-  set(key, value) {
-    if (!value) {
-      value = {};
-    }
-    this.#sessions[key] = value;
-    this.#storeSessions();
-  }
-
-  get(key) {
-    return this.#sessions[key];
-  }
-
-  init(res) {
-    const sessionId = uuid.v4();
-    this.set(sessionId);
-
-    return sessionId;
-  }
-
-  destroy(req, res) {
-    const sessionId = req.sessionId;
-    delete this.#sessions[sessionId];
-    this.#storeSessions();
-  }
-}
-
-const sessions = new Session();
-
 app.use((req, res, next) => {
-  let currentSession = {};
-  let sessionId = req.get(SESSION_KEY);
-
-  if (sessionId) {
-    currentSession = sessions.get(sessionId);
-    if (!currentSession) {
-      currentSession = {};
-      sessionId = sessions.init(res);
+  try {
+    const authorizationHeader = req.get(SESSION_KEY);
+    const accessToken = authorizationHeader.split(' ')[1];
+    const payload = userToken.getPayloadFromToken(accessToken);
+    if (payload) {
+      req.userId = payload.sub;
+      logger.info(`User with id ${req.userId} authorized by Access Token`);
+    } else {
+      logger.error('Unathorized');
     }
-  } else {
-    sessionId = sessions.init(res);
-  }
-
-  req.session = currentSession;
-  req.sessionId = sessionId;
-
-  onFinished(req, () => {
-    const currentSession = req.session;
-    const sessionId = req.sessionId;
-    sessions.set(sessionId, currentSession);
-  });
+  } catch {}
 
   next();
 });
 
-app.get('/', (req, res) => {
-  if (req.session.username) {
+app.get('/', async (req, res) => {
+  if (req.userId) {
+    const userData = await userModel.getUserById(req.userId);
+
     return res.json({
-      username: req.session.username,
+      username: `${userData.name}(${userData.email})`,
       logout: 'http://localhost:3000/logout',
     });
   }
   res.sendFile(path.join(__dirname + '/index.html'));
 });
 
-app.get('/logout', (req, res) => {
-  sessions.destroy(req, res);
+app.get('/logout', async (req, res) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(httpConstants.codes.UNAUTHORIZED).send();
+  }
+
+  await tokensStorage.deleteByKey(userId);
   res.redirect('/');
 });
 
 app.post('/api/login', async (req, res) => {
   const { login, password } = req.body;
   if (!attempsManager.canLogin(login))
-    res.status(401).json({ waitTime: attempsManager.waitTime });
+    res
+      .status(httpConstants.codes.UNAUTHORIZED)
+      .json({ waitTime: attempsManager.waitTime });
 
   try {
     const { accessToken, refreshToken } = await userToken.getUserAccessToken(
@@ -126,8 +74,8 @@ app.post('/api/login', async (req, res) => {
       password
     );
 
-    tokensStorage.upsert(login, { refreshToken });
-    await tokensStorage.store();
+    const { sub: userId } = userToken.getPayloadFromToken(accessToken);
+    tokensStorage.upsert(userId, { refreshToken });
 
     console.log(`${login} successfully login`);
     res.json({ token: accessToken });
@@ -142,7 +90,9 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/register', (req, res) => {});
+app.post('/api/register', (req, res) => {
+  res.send('aa');
+});
 
 app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`);
