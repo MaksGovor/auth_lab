@@ -197,17 +197,17 @@
 
         if (token) {
             const tokenValidTimeMsec = expiresDate - hourInMSec;
-            // if (Date.now() >= tokenValidTimeMsec) {
-            //     toggleLoading(true);
-            //     axios.post('/api/refresh', {
-            //         headers: {
-            //             Authorization: `Bearer ${token}`,
-            //         }
-            //     }).then((response) => {
-            //         toggleLoading(false);
-            //         sessionStorage.setItem('session', JSON.stringify(response.data));
-            //     });
-            // }
+            if (Date.now() >= tokenValidTimeMsec) {
+                toggleLoading(true);
+                axios.post('/api/refresh', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    }
+                }).then((response) => {
+                    toggleLoading(false);
+                    sessionStorage.setItem('session', JSON.stringify(response.data));
+                });
+            }
 
             toggleLoading(true);
             axios.get('/', {

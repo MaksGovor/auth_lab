@@ -50,6 +50,10 @@ app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname + '/index.html'));
 });
 
+app.get('/register', (req, res) => {
+  res.sendFile(path.join(__dirname + '/register.html'));
+})
+
 app.get('/logout', async (req, res) => {
   const userId = req.userId;
 
