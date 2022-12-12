@@ -1,6 +1,7 @@
 'use strict';
 
 const fsp = require('fs/promises');
+const fs = require('fs');
 
 class DataBase {
   #data;

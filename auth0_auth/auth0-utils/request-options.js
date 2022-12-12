@@ -53,8 +53,8 @@ const getUserTokenOptions = (username, password) => ({
     client_id: config.clientId,
     client_secret: config.clientSecret,
     scope: 'offline_access',
-    username: username || defaultUser.email,
-    password: password || defaultUser.password,
+    username: username,
+    password: password,
   },
 });
 

@@ -36,7 +36,7 @@
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
 
-            <a class="redirect-link" href="/register">Don't have an account? Sign up</a>
+            <a class="redirect-link" id="redirect-link" href="/register">Don't have an account? Sign up</a>
         </main>
     </body>
 
@@ -178,13 +178,16 @@
 
     <script>
         const session = sessionStorage.getItem('session');
-        const loginForm = document.getElementById("login-form");
-        const loginButton = document.getElementById("login-form-submit");
-        const loginErrorMsg = document.getElementById("login-error-msg");
-        const loginSeverMsg = document.getElementById("login-server-msg")
-        const logoutLink =  document.getElementById("logout");
-        const loader =  document.getElementById("loader");
-        const hourInMSec = 60 * 60 * 1000;
+        const loginForm = document.getElementById('login-form');
+        const loginButton = document.getElementById('login-form-submit');
+        const loginErrorMsg = document.getElementById('login-error-msg');
+        const loginSeverMsg = document.getElementById('login-server-msg')
+        const logoutLink = document.getElementById('logout');
+        const loader = document.getElementById('loader');
+        const redirectLink = document.getElementById('redirect-link');
+        redirectLink.style.display = '';
+
+        const hourToRefreshInMSec = 4 * 60 * 60 * 1000;
 
         const toggleLoading = (isLoading) => {
             loginForm.style.display = isLoading ? 'none' : '';
@@ -201,10 +204,11 @@
         } catch(e) {}
 
         if (token) {
-            const tokenValidTimeMsec = expiresDate - hourInMSec;
+            const tokenValidTimeMsec = expiresDate - hourToRefreshInMSec;
+            console.log(tokenValidTimeMsec);
             if (Date.now() >= tokenValidTimeMsec) {
                 toggleLoading(true);
-                axios.post('/api/refresh', {
+                axios.get('/api/refresh', {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     }
@@ -233,12 +237,14 @@
 
                     mainHolder.append(`Hello ${username}`);
                     logoutLink.style.opacity = 1;
+                    redirectLink.style.display = 'none';
                 }
             });
         }
 
         logoutLink.addEventListener("click", (e) => {
             e.preventDefault();
+            axios({ method: 'get', url: '/logout', headers: {Authorization: `Bearer ${token}`} }, { withCredentials: true });
             sessionStorage.removeItem('session');
             location.reload();
         });

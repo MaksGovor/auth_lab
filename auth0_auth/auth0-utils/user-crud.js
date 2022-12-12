@@ -55,6 +55,10 @@ const createUser = async (userInput) => {
       `Auth0 user-creation: ${statusCode} ${statusMessage} ${body}`
     );
   }
+
+  const responce = JSON.parse(newUserResponce.body);
+
+  return responce;
 };
 
 module.exports = {

@@ -40,7 +40,7 @@ const refreshUserToken = async (refreshToken) => {
     );
   }
 
-  const responce = JSON.parse(accessTokenUserResponce.body);
+  const responce = JSON.parse(refreshTokenResponce.body);
   return {
     accessToken: responce.access_token,
     expiresIn: responce.expires_in,

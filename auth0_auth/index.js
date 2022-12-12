@@ -63,12 +63,11 @@ app.get('/logout', async (req, res) => {
     if (!userId) {
       return res.status(httpConstants.codes.UNAUTHORIZED).send();
     }
-  
+
+    console.log(`User with id ${userId} successfully logout`);
     await tokensStorage.deleteByKey(userId);
     res.clearCookie('refreshToken');
-
-    console.log(`${userId} successfully logout`);
-    res.redirect('/'); 
+    res.redirect('/');
   } catch (err) {
     console.error(err);
     res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
@@ -78,7 +77,7 @@ app.get('/logout', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { login, password } = req.body;
   if (!attempsManager.canLogin(login))
-    res
+    return res
       .status(httpConstants.codes.UNAUTHORIZED)
       .json({ waitTime: attempsManager.waitTime });
 
@@ -89,7 +88,7 @@ app.post('/api/login', async (req, res) => {
     const { sub: userId } = userToken.getPayloadFromToken(accessToken);
     tokensStorage.upsert(userId, { refreshToken });
 
-    console.log(`${login} successfully login`);
+    console.log(`User with id ${userId} (${login}) successfully login`);
     res.cookie('refreshToken', refreshToken, { httpOnly: true });
     res.json({
       token: accessToken,
@@ -106,19 +105,19 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/refresh', async (req, res) => {
+app.get('/api/refresh', async (req, res) => {
   try {
     const userId = req.userId;
     const { refreshToken } = req.cookies;
 
     if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
 
-    const refreshTokenDb = tokensStorage.getData(userId);
+    const { refreshToken: refreshTokenDb } = tokensStorage.getData(userId);
     if (refreshToken === refreshTokenDb) {
       const { accessToken, expiresIn } = await userToken.refreshUserToken(
         refreshToken
       );
-      console.log(`Refresh token for ${req.userId}`);
+      console.log(`Refresh token for user with id ${req.userId}`);
       res.json({
         token: accessToken,
         expiresDate: Date.now() + expiresIn * 1000,
@@ -139,9 +138,11 @@ app.post('/api/refresh', async (req, res) => {
 app.post('/api/register', async (req, res) => {
   try {
     const userOptions = req.body;
-    await userModel.createUser(userOptions);
-    
-    console.log(`${userOptions.login} successfully registered`);
+    const user = await userModel.createUser(userOptions);
+
+    console.log(
+      `User with id ${user.user_id} (${user.email}) successfully registered`
+    );
     res.json({ redirect: '/' });
   } catch (err) {
     if (err instanceof ApiError) {
