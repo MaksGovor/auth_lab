@@ -33,9 +33,10 @@
                 <input type="text" name="nickname" id="nickname-field" class="register-form-field" placeholder="Nickname">
                 <input type="email" name="login" id="email-field" class="register-form-field" placeholder="Email">
                 <input type="password" name="password" id="password-field" class="register-form-field" placeholder="Password">
-                <input type="submit" value="Login" id="register-form-submit">
+                <input type="submit" value="Register" id="register-form-submit">
             </form>
 
+            <a class="redirect-link" href="/">Already have an account? Sign in</a>
         </main>
     </body>
 
@@ -153,6 +154,10 @@
         .bar7{ animation-delay: 0.7s; }
         .bar8{ animation-delay: 0.8s; }
 
+        .redirect-link {
+            color: #3d3d3d;
+        }
+
         @keyframes loader {
             0%{ 
                 transform: scaleY(0.1);
@@ -174,35 +179,47 @@
         const registerForm = document.getElementById("register-form");
         const registerButton = document.getElementById("register-form-submit");
         const registerSeverMsg = document.getElementById("register-server-msg")
-        const logoutLink =  document.getElementById("logout");
-        const loader =  document.getElementById("loader");
+        const logoutLink = document.getElementById("logout");
+        const loader = document.getElementById("loader");
         const hourInMSec = 60 * 60 * 1000;
+
+        const toggleLoading = (isLoading) => {
+            registerForm.style.display = isLoading ? 'none' : '';
+            loader.style.opacity = isLoading ? 1 : 0;
+        };
 
         registerButton.addEventListener("click", (e) => {
             e.preventDefault();
+            registerSeverMsg.innerHTML = '12212';
             const name = registerForm.name.value;
             const surname = registerForm.surname.value;
             const nickname = registerForm.nickname.value;
             const login = registerForm.login.value;
             const password = registerForm.password.value;
 
-            console.log({ name, surname, nickname, login, password});
-            // toggleLoading(true);
-            // axios({
-            //     method: 'post',
-            //     url: '/api/login',
-            //     data: {
-            //         login,
-            //         password
-            //     }
-            // }).then((response) => {
-            //     toggleLoading(false);
-            // }).catch((err) => {
-            //     toggleLoading(false);
-            //     console.log(err)
-            //     if (err.response.data) {
-            //     }
-            // });
+            toggleLoading(true);
+            axios({
+                method: 'post',
+                url: '/api/register',
+                data: {
+                    name,
+                    surname,
+                    nickname,
+                    login,
+                    password
+                }
+            }).then((response) => {
+                toggleLoading(false);
+                if (response.data.redirect === '/') {
+                    window.location = response.data.redirect;
+                }
+            }).catch((err) => {
+                toggleLoading(false);
+                console.log(err)
+                if (err.response.data) {
+                    alert(err.response.data);
+                }
+            });
         })
     </script>
 </html>

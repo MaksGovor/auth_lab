@@ -28,7 +28,7 @@
                 <div class="bar bar6"></div>
                 <div class="bar bar7"></div>
                 <div class="bar bar8"></div>      
-          </div>
+            </div>
 
             <form id="login-form" action="/api/login" method="post">
                 <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Login">
@@ -36,6 +36,7 @@
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
 
+            <a class="redirect-link" href="/register">Don't have an account? Sign up</a>
         </main>
     </body>
 
@@ -153,6 +154,10 @@
         .bar6{ animation-delay: 0.6s; }
         .bar7{ animation-delay: 0.7s; }
         .bar8{ animation-delay: 0.8s; }
+
+        .redirect-link {
+            color: #3d3d3d;
+        }
 
         @keyframes loader {
             0%{ 

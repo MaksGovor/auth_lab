@@ -2,6 +2,7 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const httpConstants = require('http-constants');
 
@@ -19,6 +20,7 @@ const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const SESSION_KEY = sessionKey;
 
@@ -29,9 +31,9 @@ app.use((req, res, next) => {
     const payload = userToken.getPayloadFromToken(accessToken);
     if (payload) {
       req.userId = payload.sub;
-      logger.info(`User with id ${req.userId} authorized by Access Token`);
+      console.log(`User with id ${req.userId} authorized by Access Token`);
     } else {
-      logger.error('Unathorized');
+      console.log('Not valid authorization header');
     }
   } catch {}
 
@@ -55,15 +57,22 @@ app.get('/register', (req, res) => {
 });
 
 app.get('/logout', async (req, res) => {
-  const userId = req.userId;
+  try {
+    const userId = req.userId;
 
-  if (!userId) {
-    return res.status(httpConstants.codes.UNAUTHORIZED).send();
+    if (!userId) {
+      return res.status(httpConstants.codes.UNAUTHORIZED).send();
+    }
+  
+    await tokensStorage.deleteByKey(userId);
+    res.clearCookie('refreshToken');
+
+    console.log(`${userId} successfully logout`);
+    res.redirect('/'); 
+  } catch (err) {
+    console.error(err);
+    res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
   }
-
-  await tokensStorage.deleteByKey(userId);
-  res.clearCookie('refreshToken');
-  res.redirect('/');
 });
 
 app.post('/api/login', async (req, res) => {
@@ -131,7 +140,9 @@ app.post('/api/register', async (req, res) => {
   try {
     const userOptions = req.body;
     await userModel.createUser(userOptions);
-    res.redirect('/');
+    
+    console.log(`${userOptions.login} successfully registered`);
+    res.json({ redirect: '/' });
   } catch (err) {
     if (err instanceof ApiError) {
       return res.status(err.statusCode).send(err.message);
