@@ -16,24 +16,24 @@ const getAppTokenOptions = () => ({
   },
 });
 
-const defaultUser = {
-  email: 'maksgovruha@gmail.com',
+const getUser = (name, surname, nickname, login, password) => ({
+  email: login,
   user_metadata: {},
   blocked: false,
   email_verified: false,
   app_metadata: {},
-  given_name: 'Maks',
-  family_name: 'Govoruha',
-  name: 'Max Govoruha',
-  nickname: 'maksgovorrr',
+  given_name: name,
+  family_name: surname,
+  name: `${name} ${surname}`,
+  nickname,
   picture: config.pictureUrl,
   user_id: uuid.v4(),
   connection: 'Username-Password-Authentication',
-  password: 'aSBoYXRlIGphdmE=',
+  password,
   verify_email: false,
-};
+});
 
-const getUserCreateOptions = (authorization, user = defaultUser) => ({
+const getUserCreateOptions = (authorization, user) => ({
   method: httpConstants.methods.POST,
   url: `https://${config.domain}/api/v2/users`,
   headers: {
@@ -79,6 +79,7 @@ const getUserGetOptions = (authorization, userId) => ({
 });
 
 module.exports = {
+  getUser,
   getAppTokenOptions,
   getUserCreateOptions,
   getUserTokenOptions,

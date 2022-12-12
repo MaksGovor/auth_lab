@@ -52,7 +52,7 @@ app.get('/', async (req, res) => {
 
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname + '/register.html'));
-})
+});
 
 app.get('/logout', async (req, res) => {
   const userId = req.userId;
@@ -98,27 +98,48 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/refresh', async (req, res) => {
-  const userId = req.userId;
-  const { refreshToken } = req.cookies;
+  try {
+    const userId = req.userId;
+    const { refreshToken } = req.cookies;
 
-  if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
+    if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
 
-  const refreshTokenDb = tokensStorage.getData(userId);
-  if (refreshToken === refreshTokenDb) {
-    const { accessToken, expiresIn } = await userToken.refreshUserToken(
-      refreshToken
-    );
-    logger.info(`Refresh token for ${req.userId}`);
-    res.json({
-      token: accessToken,
-      expiresDate: Date.now() + expiresIn * 1000,
-    });
+    const refreshTokenDb = tokensStorage.getData(userId);
+    if (refreshToken === refreshTokenDb) {
+      const { accessToken, expiresIn } = await userToken.refreshUserToken(
+        refreshToken
+      );
+      console.log(`Refresh token for ${req.userId}`);
+      res.json({
+        token: accessToken,
+        expiresDate: Date.now() + expiresIn * 1000,
+      });
+    }
+
+    res.status(httpConstants.codes.UNAUTHORIZED).send();
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return res.status(err.statusCode).send(err.message);
+    }
+
+    console.error(err);
+    res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
   }
-
-  res.status(httpConstants.codes.UNAUTHORIZED).send();
 });
 
 app.post('/api/register', async (req, res) => {
+  try {
+    const userOptions = req.body;
+    await userModel.createUser(userOptions);
+    res.redirect('/');
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return res.status(err.statusCode).send(err.message);
+    }
+
+    console.error(err);
+    res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
+  }
 });
 
 app.listen(port, async () => {

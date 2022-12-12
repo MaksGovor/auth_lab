@@ -27,6 +27,37 @@ const getUserById = async (userId) => {
   return responce;
 };
 
+const createUser = async (userInput) => {
+  const { access_token, token_type } = await appToken.getAppAccessToken();
+  const authorizationHeader = `${token_type} ${access_token}`;
+
+  const { name, surname, nickname, login, password } = userInput;
+  const user = options.getUser(name, surname, nickname, login, password);
+  const isValidUser = Object.keys(user).reduce(
+    (acc, key) => acc && user[key] !== undefined,
+    true
+  );
+  if (!isValidUser) {
+    throw new ApiError(
+      `Not all fields of registration: ${statusMessage} ${body}`
+    );
+  }
+
+  const createUserOptions = options.getUserCreateOptions(
+    authorizationHeader,
+    user
+  );
+
+  const newUserResponce = await request(createUserOptions);
+  if (newUserResponce.statusCode != httpConstants.codes.CREATED) {
+    const { statusCode, statusMessage, body } = newUserResponce;
+    throw new ApiError(
+      `Auth0 user-creation: ${statusCode} ${statusMessage} ${body}`
+    );
+  }
+};
+
 module.exports = {
   getUserById,
+  createUser,
 };
