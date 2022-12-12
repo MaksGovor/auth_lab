@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login</title>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    </head>
+
+    <body>
+        <main id="main-holder">
+            <a href="/logout" id="logout">Logout</a>
+
+            <h1 id="login-header">Login</h1>
+
+            <div id="login-error-msg-holder">
+                <p id="login-error-msg" class="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-server-msg" class="login-error-msg"></p>
+            </div>
+
+            <div id="loader" class="loader">
+                <div class="bar bar1"></div>
+                <div class="bar bar2"></div>
+                <div class="bar bar3"></div>
+                <div class="bar bar4"></div>
+                <div class="bar bar5"></div>
+                <div class="bar bar6"></div>
+                <div class="bar bar7"></div>
+                <div class="bar bar8"></div>      
+            </div>
+
+            <form id="login-form" action="/api/login" method="post">
+                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Login">
+                <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
+                <input type="submit" value="Login" id="login-form-submit">
+            </form>
+
+            <a class="redirect-link" id="redirect-link" href="/register">Don't have an account? Sign up</a>
+        </main>
+    </body>
+
+
+    <style>
+        html {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            display: grid;
+            justify-items: center;
+            align-items: center;
+            background-color: #3a3a3a;
+        }
+
+        #logout {
+            opacity: 0;
+        }
+
+        #main-holder {
+            width: 50%;
+            height: 70%;
+            display: grid;
+            justify-items: center;
+            align-items: center;
+            background-color: white;
+            border-radius: 7px;
+            box-shadow: 0px 0px 5px 2px black;
+        }
+
+        #login-error-msg-holder {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .login-error-msg {
+            width: 23%;
+            text-align: center;
+            margin: 0;
+            padding: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #8a0000;
+            border: 1px solid #8a0000;
+            background-color: #e58f8f;
+            opacity: 0;
+        }
+
+        #error-msg-second-line {
+            display: block;
+        }
+
+        #login-form {
+            align-self: flex-start;
+            display: grid;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .login-form-field::placeholder {
+            color: #3a3a3a;
+        }
+
+        .login-form-field {
+            border: none;
+            border-bottom: 1px solid #3a3a3a;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            outline: none;
+            padding: 0px 0px 5px 5px;
+        }
+
+        #login-form-submit {
+            width: 100%;
+            padding: 7px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            background-color: #3a3a3a;
+            cursor: pointer;
+            outline: none;
+        }
+
+        #login-form-submit:disabled {
+            background-color: #900000;
+        }
+
+        .loader{
+            opacity: 0;
+        }
+        .bar{
+            width: 10px;
+            height: 70px;
+            background: hsl(0, 0%, 0%);
+            display: inline-block;
+            transform-origin: bottom center;
+            border-top-right-radius: 20px;
+            border-top-left-radius: 20px;
+            animation: loader 1.2s linear infinite;
+        }
+
+        .bar1{ animation-delay: 0.1s; }
+        .bar2{ animation-delay: 0.2s; }
+        .bar3{ animation-delay: 0.3s; }
+        .bar4{ animation-delay: 0.4s; }
+        .bar5{ animation-delay: 0.5s; }
+        .bar6{ animation-delay: 0.6s; }
+        .bar7{ animation-delay: 0.7s; }
+        .bar8{ animation-delay: 0.8s; }
+
+        .redirect-link {
+            color: #3d3d3d;
+        }
+
+        @keyframes loader {
+            0%{ 
+                transform: scaleY(0.1);
+            }
+        
+            50%{ 
+                transform: scaleY(1);
+            background: rgb(255, 0, 0);
+        }
+
+            100%{
+                transform: scaleY(0.1);
+                background: transparent;
+            }
+        }
+    </style>
+
+    <script>
+        const session = sessionStorage.getItem('session');
+        const loginForm = document.getElementById('login-form');
+        const loginButton = document.getElementById('login-form-submit');
+        const loginErrorMsg = document.getElementById('login-error-msg');
+        const loginSeverMsg = document.getElementById('login-server-msg')
+        const logoutLink = document.getElementById('logout');
+        const loader = document.getElementById('loader');
+        const redirectLink = document.getElementById('redirect-link');
+        redirectLink.style.display = '';
+
+        const hourToRefreshInMSec = 4 * 60 * 60 * 1000;
+
+        const toggleLoading = (isLoading) => {
+            loginForm.style.display = isLoading ? 'none' : '';
+            loader.style.opacity = isLoading ? 1 : 0;
+        };
+
+        let token;
+        let expiresDate;
+
+        try {
+            const json = JSON.parse(session);
+            token = json.token;
+            expiresDate = json.expiresDate;
+        } catch(e) {}
+
+        if (token) {
+            const tokenValidTimeMsec = expiresDate - hourToRefreshInMSec;
+            console.log(tokenValidTimeMsec);
+            if (Date.now() >= tokenValidTimeMsec) {
+                toggleLoading(true);
+                axios.get('/api/refresh', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    }
+                }).then((response) => {
+                    toggleLoading(false);
+                    sessionStorage.setItem('session', JSON.stringify(response.data));
+                });
+            }
+
+            toggleLoading(true);
+            axios.get('/', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                }
+            }).then((response) => {
+                toggleLoading(false);
+                const { username } = response.data;
+
+                if (username) {
+                    const mainHolder = document.getElementById("main-holder");
+                    const loginHeader = document.getElementById("login-header");
+
+                    loginForm.remove();
+                    loginErrorMsg.remove();
+                    loginHeader.remove();
+
+                    mainHolder.append(`Hello ${username}`);
+                    logoutLink.style.opacity = 1;
+                    redirectLink.style.display = 'none';
+                }
+            });
+        }
+
+        logoutLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            axios({ method: 'get', url: '/logout', headers: {Authorization: `Bearer ${token}`} }, { withCredentials: true });
+            sessionStorage.removeItem('session');
+            location.reload();
+        });
+
+        loginButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            const login = loginForm.login.value;
+            const password = loginForm.password.value;
+
+            toggleLoading(true);
+            axios({
+                method: 'post',
+                url: '/api/login',
+                data: {
+                    login,
+                    password
+                }
+            }).then((response) => {
+                toggleLoading(false);
+                sessionStorage.setItem('session', JSON.stringify(response.data));
+                location.reload();
+            }).catch((err) => {
+                toggleLoading(false);
+                console.log(err)
+                if (err.response.data) {
+                    const { waitTime } = err.response.data;
+                    const waitSec =  waitTime / 1000;
+                    loginSeverMsg.innerText = `Try after ${waitSec} seconds`;
+                    loginSeverMsg.style.opacity = 1;
+                    loginButton.disabled = true;
+                    setTimeout(() => {
+                        loginButton.disabled = false;
+                        loginSeverMsg.innerText = '';
+                        loginSeverMsg.style.opacity = 0;
+                    }, waitTime)
+                }
+                loginErrorMsg.style.opacity = 1;
+            });
+        })
+    </script>
+</html>
