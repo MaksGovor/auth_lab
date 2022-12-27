@@ -28,7 +28,7 @@ const SESSION_KEY = sessionKey;
 const checkJwt = auth({
   audience,
   issuerBaseURL: `https://${domain}/`,
-}); 
+});
 
 app.use(async (req, res, next) => {
   try {
@@ -47,14 +47,6 @@ app.use(async (req, res, next) => {
 });
 
 app.get('/', async (req, res) => {
-  if (req.userId) {
-    const userData = await userModel.getUserById(req.userId);
-
-    return res.json({
-      username: `${userData.name}(${userData.email})`,
-      logout: 'http://localhost:3000/logout',
-    });
-  }
   res.sendFile(path.join(__dirname + '/index.html'));
 });
 
