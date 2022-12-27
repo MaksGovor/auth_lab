@@ -15,6 +15,8 @@ const userModel = require('./auth0-utils/user-crud');
 const AttemptManager = require('./attempt-manager');
 const DataBase = require('./db/Database');
 const ApiError = require('./error/apiError');
+const { getPublicKey } = require('./auth0-utils/public-key');
+const { verifyToken } = require('./auth0-utils/jwt-utils');
 
 const attempsManager = new AttemptManager();
 const tokensStorage = new DataBase(path.join(__dirname + '/db/tokens.json'));
@@ -31,26 +33,25 @@ const checkJwt = expressJwt({
     cache: true,
     rateLimit: true,
     jwksRequestsPerMinute: 5,
-    jwksUri: `https://${config.domain}/.well-known/jwks.json`
+    jwksUri: `https://${config.domain}/.well-known/jwks.json`,
   }),
 
   audience: config.audience,
   issuer: `https://${config.domain}/`,
-  algorithms: [ 'RS256' ]
+  algorithms: ['RS256'],
 });
 
 app.use(async (req, res, next) => {
-  try {
-    const authorizationHeader = req.get(SESSION_KEY);
-    const accessToken = authorizationHeader.split(' ')[1];
-    const payload = userToken.getPayloadFromToken(accessToken);
-    if (payload && payload.exp < Date.now()) {
-      req.userId = payload.sub;
-      console.log(`User with id ${req.userId} authorized by Access Token`);
-    } else {
-      console.log('Not valid authorization header');
-    }
-  } catch {}
+  const authorizationHeader = req.get(SESSION_KEY);
+  if (!authorizationHeader) return next();
+  const accessToken = authorizationHeader.split(' ')[1];
+  const payload = await verifyToken(accessToken);
+  if (payload) {
+    req.userId = payload.sub;
+    console.log(`User with id ${req.userId} authorized by Access Token`);
+  } else {
+    console.log('Not valid authorization header');
+  }
 
   next();
 });
@@ -68,13 +69,15 @@ app.get('/userinfo', checkJwt, async (req, res) => {
       logout: 'http://localhost:3000/logout',
     });
   }
+
+  res.status(httpConstants.codes.UNAUTHORIZED).send();
 });
 
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname + '/register.html'));
 });
 
-app.get('/logout', checkJwt, async (req, res) => {
+app.get('/logout', async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -123,7 +126,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.get('/api/refresh', checkJwt, async (req, res) => {
+app.get('/api/refresh', async (req, res) => {
   try {
     const userId = req.userId;
     const { refreshToken } = req.cookies;
@@ -176,6 +179,6 @@ app.listen(config.port, async () => {
   console.log(`Example app listening on port ${config.port}`);
 
   const appAccessToken = await appToken.getAppAccessToken();
-
+  const publicKey = await getPublicKey();
   console.log({ appAccessToken });
 });
