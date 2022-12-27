@@ -5,8 +5,9 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const httpConstants = require('http-constants');
+const { auth } = require('express-oauth2-jwt-bearer');
 
-const { port, sessionKey } = require('./config');
+const { port, sessionKey, audience, domain } = require('./config');
 const appToken = require('./auth0-utils/app-token');
 const userToken = require('./auth0-utils/user-token');
 const userModel = require('./auth0-utils/user-crud');
@@ -24,12 +25,17 @@ app.use(cookieParser());
 
 const SESSION_KEY = sessionKey;
 
-app.use((req, res, next) => {
+const checkJwt = auth({
+  audience,
+  issuerBaseURL: `https://${domain}/`,
+}); 
+
+app.use(async (req, res, next) => {
   try {
     const authorizationHeader = req.get(SESSION_KEY);
     const accessToken = authorizationHeader.split(' ')[1];
     const payload = userToken.getPayloadFromToken(accessToken);
-    if (payload) {
+    if (payload && payload.exp < Date.now()) {
       req.userId = payload.sub;
       console.log(`User with id ${req.userId} authorized by Access Token`);
     } else {
@@ -52,11 +58,22 @@ app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname + '/index.html'));
 });
 
+app.get('/userinfo', checkJwt, async (req, res) => {
+  if (req.userId) {
+    const userData = await userModel.getUserById(req.userId);
+
+    return res.json({
+      username: `${userData.name}(${userData.email})`,
+      logout: 'http://localhost:3000/logout',
+    });
+  }
+});
+
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname + '/register.html'));
 });
 
-app.get('/logout', async (req, res) => {
+app.get('/logout', checkJwt, async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -105,7 +122,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.get('/api/refresh', async (req, res) => {
+app.get('/api/refresh', checkJwt, async (req, res) => {
   try {
     const userId = req.userId;
     const { refreshToken } = req.cookies;
