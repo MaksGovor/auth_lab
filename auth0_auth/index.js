@@ -5,9 +5,10 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const httpConstants = require('http-constants');
-const { auth } = require('express-oauth2-jwt-bearer');
+const { expressjwt: expressJwt } = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
 
-const { port, sessionKey, audience, domain } = require('./config');
+const config = require('./config');
 const appToken = require('./auth0-utils/app-token');
 const userToken = require('./auth0-utils/user-token');
 const userModel = require('./auth0-utils/user-crud');
@@ -23,11 +24,19 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const SESSION_KEY = sessionKey;
+const SESSION_KEY = config.sessionKey;
 
-const checkJwt = auth({
-  audience,
-  issuerBaseURL: `https://${domain}/`,
+const checkJwt = expressJwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${config.domain}/.well-known/jwks.json`
+  }),
+
+  audience: config.audience,
+  issuer: `https://${config.domain}/`,
+  algorithms: [ 'RS256' ]
 });
 
 app.use(async (req, res, next) => {
@@ -163,8 +172,8 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.listen(port, async () => {
-  console.log(`Example app listening on port ${port}`);
+app.listen(config.port, async () => {
+  console.log(`Example app listening on port ${config.port}`);
 
   const appAccessToken = await appToken.getAppAccessToken();
 
