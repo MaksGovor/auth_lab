@@ -219,7 +219,7 @@
             }
 
             toggleLoading(true);
-            axios.get('/', {
+            axios.get('/userinfo', {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 }
@@ -239,6 +239,8 @@
                     logoutLink.style.opacity = 1;
                     redirectLink.style.display = 'none';
                 }
+            }).catch(() => {
+                toggleLoading(false);
             });
         }
 

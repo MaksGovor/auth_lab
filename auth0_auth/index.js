@@ -5,14 +5,18 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const httpConstants = require('http-constants');
+const { expressjwt: expressJwt } = require('express-jwt');
+const jwksRsa = require('jwks-rsa');
 
-const { port, sessionKey } = require('./config');
+const config = require('./config');
 const appToken = require('./auth0-utils/app-token');
 const userToken = require('./auth0-utils/user-token');
 const userModel = require('./auth0-utils/user-crud');
 const AttemptManager = require('./attempt-manager');
 const DataBase = require('./db/Database');
 const ApiError = require('./error/apiError');
+const { getPublicKey } = require('./auth0-utils/public-key');
+const { verifyToken } = require('./auth0-utils/jwt-utils');
 
 const attempsManager = new AttemptManager();
 const tokensStorage = new DataBase(path.join(__dirname + '/db/tokens.json'));
@@ -22,25 +26,41 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const SESSION_KEY = sessionKey;
+const SESSION_KEY = config.sessionKey;
 
-app.use((req, res, next) => {
-  try {
-    const authorizationHeader = req.get(SESSION_KEY);
-    const accessToken = authorizationHeader.split(' ')[1];
-    const payload = userToken.getPayloadFromToken(accessToken);
-    if (payload) {
-      req.userId = payload.sub;
-      console.log(`User with id ${req.userId} authorized by Access Token`);
-    } else {
-      console.log('Not valid authorization header');
-    }
-  } catch {}
+const checkJwt = expressJwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${config.domain}/.well-known/jwks.json`,
+  }),
+
+  audience: config.audience,
+  issuer: `https://${config.domain}/`,
+  algorithms: ['RS256'],
+});
+
+app.use(async (req, res, next) => {
+  const authorizationHeader = req.get(SESSION_KEY);
+  if (!authorizationHeader) return next();
+  const accessToken = authorizationHeader.split(' ')[1];
+  const payload = await verifyToken(accessToken);
+  if (payload) {
+    req.userId = payload.sub;
+    console.log(`User with id ${req.userId} authorized by Access Token`);
+  } else {
+    console.log('Not valid authorization header');
+  }
 
   next();
 });
 
 app.get('/', async (req, res) => {
+  res.sendFile(path.join(__dirname + '/index.html'));
+});
+
+app.get('/userinfo', checkJwt, async (req, res) => {
   if (req.userId) {
     const userData = await userModel.getUserById(req.userId);
 
@@ -49,7 +69,8 @@ app.get('/', async (req, res) => {
       logout: 'http://localhost:3000/logout',
     });
   }
-  res.sendFile(path.join(__dirname + '/index.html'));
+
+  res.status(httpConstants.codes.UNAUTHORIZED).send();
 });
 
 app.get('/register', (req, res) => {
@@ -154,10 +175,10 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.listen(port, async () => {
-  console.log(`Example app listening on port ${port}`);
+app.listen(config.port, async () => {
+  console.log(`Example app listening on port ${config.port}`);
 
   const appAccessToken = await appToken.getAppAccessToken();
-
+  const publicKey = await getPublicKey();
   console.log({ appAccessToken });
 });
