@@ -17,6 +17,7 @@ const DataBase = require('./db/Database');
 const ApiError = require('./error/apiError');
 const { getPublicKey } = require('./auth0-utils/public-key');
 const { verifyToken } = require('./auth0-utils/jwt-utils');
+const { authByCode } = require('./auth0-utils/auth-code');
 
 const attempsManager = new AttemptManager();
 const tokensStorage = new DataBase(path.join(__dirname + '/db/tokens.json'));
@@ -57,7 +58,24 @@ app.use(async (req, res, next) => {
 });
 
 app.get('/', async (req, res) => {
-  res.sendFile(path.join(__dirname + '/index.html'));
+  const queryParams = req.query;
+
+  if (
+    queryParams &&
+    queryParams.code &&
+    queryParams.state === config.state
+  ) {
+    try {
+      const { code } = queryParams;
+      const { accessToken, expiresIn, refreshToken } = await authByCode(code);
+      res.setHeader('AccessToken', accessToken);
+      res.setHeader('expiresDate', Date.now() + expiresIn * 1000);
+      const { sub: userId } = userToken.getPayloadFromToken(accessToken);
+      tokensStorage.upsert(userId, { refreshToken });
+    } catch {}
+  }
+
+  return res.sendFile(path.join(__dirname + '/index.html'));
 });
 
 app.get('/userinfo', checkJwt, async (req, res) => {
@@ -87,12 +105,15 @@ app.get('/logout', async (req, res) => {
 
     console.log(`User with id ${userId} successfully logout`);
     await tokensStorage.deleteByKey(userId);
-    res.clearCookie('refreshToken');
     res.redirect('/');
   } catch (err) {
     console.error(err);
     res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
   }
+});
+
+app.get('/login', async (req, res) => {
+  res.redirect(config.loginUrl);
 });
 
 app.post('/api/login', async (req, res) => {
@@ -110,7 +131,6 @@ app.post('/api/login', async (req, res) => {
     tokensStorage.upsert(userId, { refreshToken });
 
     console.log(`User with id ${userId} (${login}) successfully login`);
-    res.cookie('refreshToken', refreshToken, { httpOnly: true });
     res.json({
       token: accessToken,
       expiresDate: Date.now() + expiresIn * 1000,
@@ -129,14 +149,13 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/refresh', async (req, res) => {
   try {
     const userId = req.userId;
-    const { refreshToken } = req.cookies;
 
     if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
 
     const { refreshToken: refreshTokenDb } = tokensStorage.getData(userId);
-    if (refreshToken === refreshTokenDb) {
+    if (refreshTokenDb) {
       const { accessToken, expiresIn } = await userToken.refreshUserToken(
-        refreshToken
+        refreshTokenDb
       );
       console.log(`Refresh token for user with id ${req.userId}`);
       res.json({

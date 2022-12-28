@@ -36,7 +36,8 @@
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
 
-            <a class="redirect-link" id="redirect-link" href="/register">Don't have an account? Sign up</a>
+            <a class="redirect-link" id="redirect-register" href="/register">Don't have an account? Sign up</a>
+            <a class="redirect-link" id="redirect-login" href="/login">Sign up with auth0 SSO</a>
         </main>
     </body>
 
@@ -177,6 +178,21 @@
     </style>
 
     <script>
+        function fetchSimilarHeaders (callback) {
+            const request = new XMLHttpRequest();
+            request.onreadystatechange = function () {
+                if (callback && typeof callback === 'function') {
+                    if (request.readyState === XMLHttpRequest.DONE) {
+                        const token = request.getResponseHeader('accesstoken');
+                        const expiresDate = +request.getResponseHeader('expiresDate')
+                        callback({ token, expiresDate });
+                    }
+                }
+            };
+            request.open('HEAD', document.location, true);
+            request.send(null);
+        }
+
         const session = sessionStorage.getItem('session');
         const loginForm = document.getElementById('login-form');
         const loginButton = document.getElementById('login-form-submit');
@@ -184,19 +200,28 @@
         const loginSeverMsg = document.getElementById('login-server-msg')
         const logoutLink = document.getElementById('logout');
         const loader = document.getElementById('loader');
-        const redirectLink = document.getElementById('redirect-link');
-        redirectLink.style.display = '';
+        const redirectRegister = document.getElementById('redirect-register');
+        const redirectLogin = document.getElementById('redirect-login');
+        redirectRegister.style.display = '';
+        redirectLogin.style.display = '';
 
-        const hourToRefreshInMSec = 4 * 60 * 60 * 1000;
+        const hourToRefreshInMSec = 23.95 * 60 * 60 * 1000;
 
         const toggleLoading = (isLoading) => {
             loginForm.style.display = isLoading ? 'none' : '';
             loader.style.opacity = isLoading ? 1 : 0;
         };
 
+        fetchSimilarHeaders(headers => {
+            if (headers.token && headers.expiresDate) {
+                sessionStorage.setItem('session', JSON.stringify(headers));
+                document.location = '/';
+            }
+        });
+
         let token;
         let expiresDate;
-
+        
         try {
             const json = JSON.parse(session);
             token = json.token;
@@ -237,7 +262,8 @@
 
                     mainHolder.append(`Hello ${username}`);
                     logoutLink.style.opacity = 1;
-                    redirectLink.style.display = 'none';
+                    redirectRegister.style.display = 'none';
+                    redirectLogin.style.display = 'none';
                 }
             }).catch(() => {
                 toggleLoading(false);

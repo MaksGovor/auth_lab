@@ -19,7 +19,7 @@ const verifyToken = async (accessToken) => {
 
     return payload;
   } catch (err) {
-    console.log({ jwtVerifyErrorMsg: err.message })
+    console.log({ jwtVerifyErrorMsg: err.message });
     return null;
   }
 };

@@ -78,6 +78,21 @@ const getUserGetOptions = (authorization, userId) => ({
   },
 });
 
+const getCodeOptions = (authorizationCode) => ({
+  method: httpConstants.methods.POST,
+  url: `https://${config.domain}/oauth/token`,
+  headers: {
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  form: {
+    grant_type: 'authorization_code',
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    code: authorizationCode,
+    redirect_uri: 'http://localhost:3000',
+  },
+});
+
 module.exports = {
   getUser,
   getAppTokenOptions,
@@ -85,4 +100,5 @@ module.exports = {
   getUserTokenOptions,
   getRefreshUserTokenOptions,
   getUserGetOptions,
+  getCodeOptions,
 };
