@@ -49,6 +49,12 @@ app.use(async (req, res, next) => {
   const payload = await verifyToken(accessToken);
   if (payload) {
     req.userId = payload.sub;
+    if (payload.exp - config.timeToRefreshSec <= Date.now()) {
+      const { refreshToken } = tokensStorage.getData(req.userId);
+      const { accessToken, expiresIn } = await userToken.refreshUserToken(refreshToken);
+      res.setHeader('AccessToken', accessToken);
+      res.setHeader('expiresDate', Date.now() + expiresIn * 1000);
+    }
     console.log(`User with id ${req.userId} authorized by Access Token`);
   } else {
     console.log('Not valid authorization header');

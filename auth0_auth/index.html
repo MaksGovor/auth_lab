@@ -205,7 +205,7 @@
         redirectRegister.style.display = '';
         redirectLogin.style.display = '';
 
-        const hourToRefreshInMSec = 23.95 * 60 * 60 * 1000;
+        const hourToRefreshInMSec = 4 * 60 * 60 * 1000;
 
         const toggleLoading = (isLoading) => {
             loginForm.style.display = isLoading ? 'none' : '';
@@ -264,6 +264,13 @@
                     logoutLink.style.opacity = 1;
                     redirectRegister.style.display = 'none';
                     redirectLogin.style.display = 'none';
+                }
+
+                if (response.headers.accesstoken && response.headers.expiresdate) {
+                    sessionStorage.setItem(
+                        'session', 
+                        JSON.stringify({token: response.headers.accesstoken, expiresDate: +response.headers.expiresdate})
+                    );
                 }
             }).catch(() => {
                 toggleLoading(false);

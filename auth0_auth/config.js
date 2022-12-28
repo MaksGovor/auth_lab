@@ -14,6 +14,7 @@ const config = {
   localTokenPath: `${__dirname}/token-info.json`,
   refreshTokenViaTimeSec: 500,
   state: 'login-example',
+  timeToRefreshSec: 23.95 * 60 * 60,
 };
 
 module.exports = {
