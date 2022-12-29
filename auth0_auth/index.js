@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const uuid = require('uuid');
 const httpConstants = require('http-constants');
 const { expressjwt: expressJwt } = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
@@ -49,11 +50,11 @@ app.use(async (req, res, next) => {
   const payload = await verifyToken(accessToken);
   if (payload) {
     req.userId = payload.sub;
-    if (payload.exp - config.timeToRefreshSec <= Date.now()) {
+    if (payload.exp - config.timeToRefreshSec <= (Date.now() / 1000)) {
       const { refreshToken } = tokensStorage.getData(req.userId);
-      const { accessToken, expiresIn } = await userToken.refreshUserToken(refreshToken);
+      const { accessToken } = await userToken.refreshUserToken(refreshToken);
+      console.log(`Refresh token for user with id ${req.userId}`);
       res.setHeader('AccessToken', accessToken);
-      res.setHeader('expiresDate', Date.now() + expiresIn * 1000);
     }
     console.log(`User with id ${req.userId} authorized by Access Token`);
   } else {
@@ -67,15 +68,13 @@ app.get('/', async (req, res) => {
   const queryParams = req.query;
 
   if (
-    queryParams &&
-    queryParams.code &&
-    queryParams.state === config.state
+    queryParams && queryParams.code && queryParams.state && 
+    queryParams.state.includes(config.state)
   ) {
     try {
       const { code } = queryParams;
-      const { accessToken, expiresIn, refreshToken } = await authByCode(code);
+      const { accessToken, refreshToken } = await authByCode(code);
       res.setHeader('AccessToken', accessToken);
-      res.setHeader('expiresDate', Date.now() + expiresIn * 1000);
       const { sub: userId } = userToken.getPayloadFromToken(accessToken);
       tokensStorage.upsert(userId, { refreshToken });
     } catch {}
@@ -101,7 +100,11 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname + '/register.html'));
 });
 
-app.get('/logout', async (req, res) => {
+app.get('/logout', (req, res) => {
+  res.redirect(`https://${config.domain}/v2/logout?client_id=${config.clientId}&returnTo=http://localhost:3000/`);
+});
+
+app.post('/logout', async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -111,15 +114,14 @@ app.get('/logout', async (req, res) => {
 
     console.log(`User with id ${userId} successfully logout`);
     await tokensStorage.deleteByKey(userId);
-    res.redirect('/');
   } catch (err) {
     console.error(err);
     res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
   }
-});
+})
 
 app.get('/login', async (req, res) => {
-  res.redirect(config.loginUrl);
+  res.redirect(config.getLoginUrl(uuid.v4()));
 });
 
 app.post('/api/login', async (req, res) => {
@@ -130,7 +132,7 @@ app.post('/api/login', async (req, res) => {
       .json({ waitTime: attempsManager.waitTime });
 
   try {
-    const { accessToken, expiresIn, refreshToken } =
+    const { accessToken, refreshToken } =
       await userToken.getUserAccessToken(login, password);
 
     const { sub: userId } = userToken.getPayloadFromToken(accessToken);
@@ -139,40 +141,10 @@ app.post('/api/login', async (req, res) => {
     console.log(`User with id ${userId} (${login}) successfully login`);
     res.json({
       token: accessToken,
-      expiresDate: Date.now() + expiresIn * 1000,
     });
   } catch (err) {
     if (err instanceof ApiError) {
       attempsManager.addAttempt(login);
-      return res.status(err.statusCode).send(err.message);
-    }
-
-    console.error(err);
-    res.status(httpConstants.codes.INTERNAL_SERVER_ERROR).send();
-  }
-});
-
-app.get('/api/refresh', async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    if (!userId) return res.status(httpConstants.codes.UNAUTHORIZED).send();
-
-    const { refreshToken: refreshTokenDb } = tokensStorage.getData(userId);
-    if (refreshTokenDb) {
-      const { accessToken, expiresIn } = await userToken.refreshUserToken(
-        refreshTokenDb
-      );
-      console.log(`Refresh token for user with id ${req.userId}`);
-      res.json({
-        token: accessToken,
-        expiresDate: Date.now() + expiresIn * 1000,
-      });
-    }
-
-    res.status(httpConstants.codes.UNAUTHORIZED).send();
-  } catch (err) {
-    if (err instanceof ApiError) {
       return res.status(err.statusCode).send(err.message);
     }
 

@@ -19,5 +19,5 @@ const config = {
 
 module.exports = {
   ...config,
-  loginUrl: `https://${config.domain}/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=http://localhost:3000&scope=offline_access&audience=${config.audience}&state=${config.state}`,
+  getLoginUrl: (id) => `https://${config.domain}/authorize?response_type=code&client_id=${config.clientId}&redirect_uri=http://localhost:3000&scope=offline_access&audience=${config.audience}&state=${config.state}-${id}`,
 };

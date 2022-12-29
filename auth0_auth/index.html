@@ -184,8 +184,7 @@
                 if (callback && typeof callback === 'function') {
                     if (request.readyState === XMLHttpRequest.DONE) {
                         const token = request.getResponseHeader('accesstoken');
-                        const expiresDate = +request.getResponseHeader('expiresDate')
-                        callback({ token, expiresDate });
+                        callback({ token });
                     }
                 }
             };
@@ -205,15 +204,13 @@
         redirectRegister.style.display = '';
         redirectLogin.style.display = '';
 
-        const hourToRefreshInMSec = 4 * 60 * 60 * 1000;
-
         const toggleLoading = (isLoading) => {
             loginForm.style.display = isLoading ? 'none' : '';
             loader.style.opacity = isLoading ? 1 : 0;
         };
 
         fetchSimilarHeaders(headers => {
-            if (headers.token && headers.expiresDate) {
+            if (headers.token) {
                 sessionStorage.setItem('session', JSON.stringify(headers));
                 document.location = '/';
             }
@@ -225,24 +222,9 @@
         try {
             const json = JSON.parse(session);
             token = json.token;
-            expiresDate = json.expiresDate;
         } catch(e) {}
 
         if (token) {
-            const tokenValidTimeMsec = expiresDate - hourToRefreshInMSec;
-            console.log(tokenValidTimeMsec);
-            if (Date.now() >= tokenValidTimeMsec) {
-                toggleLoading(true);
-                axios.get('/api/refresh', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    }
-                }).then((response) => {
-                    toggleLoading(false);
-                    sessionStorage.setItem('session', JSON.stringify(response.data));
-                });
-            }
-
             toggleLoading(true);
             axios.get('/userinfo', {
                 headers: {
@@ -266,10 +248,10 @@
                     redirectLogin.style.display = 'none';
                 }
 
-                if (response.headers.accesstoken && response.headers.expiresdate) {
+                if (response.headers.accesstoken) {
                     sessionStorage.setItem(
                         'session', 
-                        JSON.stringify({token: response.headers.accesstoken, expiresDate: +response.headers.expiresdate})
+                        JSON.stringify({token: response.headers.accesstoken})
                     );
                 }
             }).catch(() => {
@@ -278,10 +260,8 @@
         }
 
         logoutLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            axios({ method: 'get', url: '/logout', headers: {Authorization: `Bearer ${token}`} }, { withCredentials: true });
+            axios({ method: 'post', url: '/logout', headers: {Authorization: `Bearer ${token}`} }, { withCredentials: true });
             sessionStorage.removeItem('session');
-            location.reload();
         });
 
         loginButton.addEventListener("click", (e) => {
